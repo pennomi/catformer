@@ -1,0 +1,36 @@
+{"paths": [
+    {"name": "Level boundaries",
+     "points": [[0, 0], [800, 0], [800, 600], [0, 600], [0, 0]],
+     "jump_through": false
+     },
+    {"name": "Center Hill",
+     "points": [[200, 0], [300, 50], [500, 50], [600, 0]],
+     "jump_through": false
+     },
+    {"name": "Cliff",
+     "points": [[500, 0], [500, 300], [800, 300]],
+     "jump_through": false
+     },
+    {"name": "Platform",
+     "points": [[50, 250], [200, 250]],
+     "jump_through": false
+     },
+    {"name": "Steep Angle",
+     "points": [[800, 500], [750, 300]],
+     "jump_through": false
+     },
+    {"name": "Low jump through",
+     "points": [[450, 100], [500, 100]],
+     "jump_through": true
+     },
+    {"name": "High jump through",
+     "points": [[450, 200], [500, 200]],
+     "jump_through": true
+     },
+    {"name": "Moving Bucket",
+     "points": [[-25, 25], [-25, 0], [25, 0], [25, 25]],
+     "jump_through": false,
+     "positions": [[100, 0], [400, 200], [400, 500], [100, 500]],
+     "speed": 1
+     }
+]}
