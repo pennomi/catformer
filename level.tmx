@@ -61,11 +61,11 @@
   <object x="22" y="1405">
    <polyline points="0,0 -3,135 38,175 82,177 109,144 203,146 240,110 245,76 307,79 310,48 457,45 459,45"/>
   </object>
-  <object name="small platform" type="polyline" x="434" y="1341">
+  <object x="419" y="1346">
    <properties>
-    <property name="jump_through" value="1"/>
+    <property name="jump_through" value="true"/>
    </properties>
-   <polyline points="0,0 -17,17 -15,38 27,35 45,13 37,4 -3,1"/>
+   <polyline points="0,0 59,0 59,18 16,40 -1,29 0,1"/>
   </object>
  </objectgroup>
 </map>
