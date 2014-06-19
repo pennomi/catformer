@@ -3,7 +3,7 @@
  <tileset firstgid="1" name="mininicular" tilewidth="32" tileheight="32">
   <image source="mininicular.png" width="256" height="256"/>
  </tileset>
- <layer name="Tile Layer 1" width="50" height="50">
+ <layer name="Foreground" width="50" height="50">
   <data encoding="csv">
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -57,4 +57,15 @@
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 </data>
  </layer>
+ <objectgroup name="Platforms" width="50" height="50">
+  <object x="22" y="1405">
+   <polyline points="0,0 -3,135 38,175 82,177 109,144 203,146 240,110 245,76 307,79 310,48 457,45 459,45"/>
+  </object>
+  <object name="small platform" type="polyline" x="434" y="1341">
+   <properties>
+    <property name="jump_through" value="1"/>
+   </properties>
+   <polyline points="0,0 -17,17 -15,38 27,35 45,13 37,4 -3,1"/>
+  </object>
+ </objectgroup>
 </map>

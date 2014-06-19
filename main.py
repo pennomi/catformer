@@ -194,11 +194,28 @@ class World(object):
             csv = layer.findall('data')[0].text
             self.data = [row for row in csv.split('\n')]
             self.data.reverse()  # pygame is opposite of Tiled
+        map_height = 32 * 50  # TODO: hardcoded
+        # These are the collision objects
+        for object_group in root.findall('objectgroup'):
+            for obj in object_group.iter('object'):
+                jump_through = False
+                for p in obj.iter('property'):
+                    if p.get('name') == "jump_through":
+                        jump_through = True
+                line = obj.find('polyline')
+                group_x = int(obj.get('x'))
+                group_y = int(obj.get('y'))
+                point_strings = line.get('points').split()
+                point_strings = [p.split(',') for p in point_strings]
+                point_strings = [(group_x + int(p[0]), map_height-group_y-int(p[1])) for p in point_strings]
+                print(point_strings)
+                Platform(point_strings, jump_through=jump_through)
 
     def draw(self, screen):
         screen_h = screen.get_height() + 32
         screen_w = screen.get_width() + 32
         # TODO: only iterate over what'll fit on the screen
+        # (We'll implement this *after* the camera)
         for y, row in enumerate(self.data):
             for x, tile_id in enumerate(row.split(',')):
                 if tile_id == '':
@@ -208,6 +225,36 @@ class World(object):
                 if y*32 > screen_h:
                     continue
                 self.tileset.draw(screen, int(tile_id), (x*32, y*32))
+
+
+class Platform(object):
+    def __init__(self, points, jump_through=False):
+        is_moving = False  # bool(path.get("positions"))
+        # Create the body type
+        if is_moving:
+            self.body = pymunk.Body(pymunk.inf, pymunk.inf)
+        else:
+            self.body = SPACE.static_body
+        # Keep track of moving platforms
+        for i in xrange(len(points)-1):
+            # Make and configure the physics object
+            seg = pymunk.Segment(self.body, points[i], points[i+1], 5)
+            seg.friction = 1
+            seg.group = 1
+            if jump_through:
+                seg.collision_type = JUMP_THROUGH_COLLISION_TYPE
+                seg.color = (255, 255, 0, 255)
+            if is_moving:
+                seg.color = THECOLORS["blue"]
+                seg.body.position = Vec2d(path["positions"][0])
+            # Add it to the world
+            SPACE.add(seg)
+
+        # Moving platforms need to be operated on later
+        if is_moving:
+            plat = MovingPlatform(self.body, path["positions"],
+                                  path.get("speed", 1))
+            moving_platforms.append(plat)
 
 
 class MovingPlatform(object):
@@ -271,7 +318,7 @@ def main():
             seg.group = 1
             if is_jump_through:
                 seg.collision_type = JUMP_THROUGH_COLLISION_TYPE
-                seg.color = THECOLORS["yellow"]
+                seg.color = (255, 255, 0, 255)
             if is_moving:
                 seg.color = THECOLORS["blue"]
                 seg.body.position = Vec2d(path["positions"][0])
