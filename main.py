@@ -17,6 +17,7 @@ http://opengameart.org/content/minimalist-pixel-tileset
 # * Shooting stuff
 
 import json
+import xml.etree.ElementTree as ET
 
 import pygame
 from pygame import locals as KEYS
@@ -24,7 +25,7 @@ from pygame.color import THECOLORS
 
 import pymunk
 from pymunk.vec2d import Vec2d
-from pymunk.pygame_util import draw, to_pygame
+from pymunk.pygame_util import to_pygame
 
 
 # Begin by initializing some constants for the physics world
@@ -66,12 +67,12 @@ class Player(object):
         self.body.position = 100, 100
 
         # TODO: heads should be a separate collision type
-        self.head = pymunk.Circle(self.body, 6.5, (6, 7))
+        self.head = pymunk.Circle(self.body, 14, (12, 7))
         self.head.collision_type = PLAYER_COLLISION_TYPE
         self.head.friction = 0
         self.head.ignore_draw = True
 
-        self.feet = pymunk.Circle(self.body, 6.5, (6, -8))
+        self.feet = pymunk.Circle(self.body, 14, (12, -16))
         self.feet.collision_type = 1
         # TODO: Make this zero whilst falling
         self.feet.friction = 2
@@ -82,7 +83,7 @@ class Player(object):
         # Character stats
         self.remaining_jumps = 2
         self.speed = 100
-        self.jump_speed = 300
+        self.jump_speed = 400
         self.health = 3
 
         # State tracking
@@ -121,19 +122,19 @@ class Player(object):
         # play different animations depending on what's going on
         # TODO: These are all screwed up
         if self.landed and abs(self.ground_velocity.x) > 1:
-            animation_offset = 64 * 0
+            animation_offset = 128 * 0
         elif not self.landed:
-            animation_offset = 64 * 1
+            animation_offset = 128 * 1
         else:
             # walking animation
-            animation_offset = 64 * (self.frame_number / 8 % 4)
+            animation_offset = 128 * (self.frame_number / 8 % 4)
 
         # match sprite to the physics object
-        position = self.body.position + (-24, 38)
+        position = self.body.position + (-48, 76)
 
         # perform the actual draw
         screen.blit(self.img, to_pygame(position, screen),
-                    (animation_offset, 64 * 0, 64, 64))
+                    (animation_offset, 128 * 0, 128, 128))
 
         # Did we land?
         if self.landing_speed / self.body.mass > 200:
@@ -161,6 +162,52 @@ class Player(object):
 
         # Terminal velocity
         self.body.velocity.y = max(self.body.velocity.y, -300)
+
+
+class Tileset(object):
+    def __init__(self, filename):
+        self.img = pygame.image.load(filename)
+        self.tile_width = 32
+        self.tile_height = 32
+
+    def draw(self, screen, tile_id, position):
+        if not tile_id:
+            return  # There was nothing to be drawn
+        tile_id -= 1  # we're 1-indexed in Tiled
+        tiles_wide = self.img.get_width() // self.tile_width
+        source_x = (tile_id % tiles_wide) * self.tile_width
+        source_y = (tile_id // tiles_wide) * self.tile_height
+        screen.blit(self.img, to_pygame(position, screen),
+                    (source_x, source_y, self.tile_width, self.tile_height))
+
+
+class World(object):
+    def __init__(self, filename):
+        # Load the Tileset
+        self.tileset = Tileset('mininicular.png')
+
+        # Parse the TMX
+        self.tree = ET.parse(filename)
+        root = self.tree.getroot()
+        for layer in root.findall('layer'):
+            # This is the csv of the map data
+            csv = layer.findall('data')[0].text
+            self.data = [row for row in csv.split('\n')]
+            self.data.reverse()  # pygame is opposite of Tiled
+
+    def draw(self, screen):
+        screen_h = screen.get_height() + 32
+        screen_w = screen.get_width() + 32
+        # TODO: only iterate over what'll fit on the screen
+        for y, row in enumerate(self.data):
+            for x, tile_id in enumerate(row.split(',')):
+                if tile_id == '':
+                    continue
+                if x*32 > screen_w:
+                    continue
+                if y*32 > screen_h:
+                    continue
+                self.tileset.draw(screen, int(tile_id), (x*32, y*32))
 
 
 class MovingPlatform(object):
@@ -197,6 +244,9 @@ def main():
     clock = pygame.time.Clock()
     running = True
     font = pygame.font.SysFont("Arial", 16)
+
+    # Generate the visible world
+    world = World('level.tmx')
 
     # Generate the physics world
     moving_platforms = []
@@ -284,12 +334,14 @@ def main():
 
         # Draw stuff
         # Clear screen
-        screen.fill(THECOLORS["black"])
-        # Debug draw physics
-        draw(screen, SPACE)
+        screen.fill((109, 169, 101, 255))  # Light green color
+        # Draw tiles
+        world.draw(screen)
         # Draw players
         for player in players:
             player.draw(screen)
+        # Debug draw physics
+        pymunk.pygame_util.draw(screen, SPACE)
         # Draw fps label
         screen.blit(font.render("{} FPS".format(clock.get_fps()), 1,
                                 THECOLORS["white"]), (0, 0))

@@ -20,11 +20,15 @@
      "jump_through": false
      },
     {"name": "Low jump through",
-     "points": [[450, 100], [500, 100]],
+     "points": [[450, 125], [500, 125]],
+     "jump_through": true
+     },
+    {"name": "Mid jump through",
+     "points": [[450, 200], [500, 200]],
      "jump_through": true
      },
     {"name": "High jump through",
-     "points": [[450, 200], [500, 200]],
+     "points": [[450, 275], [500, 275]],
      "jump_through": true
      },
     {"name": "Moving Bucket",
