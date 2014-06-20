@@ -43,8 +43,9 @@ SPACE.add_collision_handler(
 
 
 class Animation(object):
-    def __init__(self, img, row, frame_count, start_frame=0, loop=False, frame_rate=.15):
-        self.img = img
+    def __init__(self, images, row, frame_count,
+                 start_frame=0, loop=False, frame_rate=.15):
+        self.img, self.flip_img = images
         self.row = row
         self.frame_count = frame_count
         self.start_frame = start_frame
@@ -53,7 +54,7 @@ class Animation(object):
         self.current_frame = 0
         self.done = False
 
-    def draw(self, screen, pos):
+    def draw(self, screen, pos, flip):
         frame = int(self.current_frame)
         self.current_frame += self.frame_rate
         if self.current_frame >= self.frame_count:
@@ -62,9 +63,16 @@ class Animation(object):
             else:
                 self.current_frame -= self.frame_rate  # stick on the last frame
                 self.done = True
+
+        img = self.flip_img if flip else self.img
         # TODO: remove hardcoded sprite size
-        screen.blit(self.img, to_pygame(pos, screen),
-                    ((frame + self.start_frame) * 128, self.row * 128, 128, 128))
+        sprite_size = 128
+        x = (frame + self.start_frame) * sprite_size
+        if flip:
+            x = img.get_width() - x - sprite_size
+        y = self.row * sprite_size
+        screen.blit(img, to_pygame(pos, screen),
+                    (x, y, sprite_size, sprite_size))
 
 
 class Player(object):
@@ -73,13 +81,17 @@ class Player(object):
         self.name = name
 
         # sprites
-        self.img = pygame.image.load(img)
+        img = pygame.image.load(img)
+        flip_img = pygame.transform.flip(img, True, False)
+        images = (img, flip_img)
 
         # animations
-        self.idle_loop = Animation(self.img, 0, 4, loop=True)
-        self.walk_loop = Animation(self.img, 1, 8, loop=True)
-        self.jump_loop = Animation(self.img, 2, 2, start_frame=2, loop=True)
-        self.spin_loop = Animation(self.img, 3, 4, start_frame=3, loop=True, frame_rate=0.4)
+        self.idle_loop = Animation(images, 0, 4, loop=True)
+        self.walk_loop = Animation(images, 1, 8, loop=True)
+        self.jump_loop = Animation(images, 2, 2, start_frame=2, loop=True)
+        self.spin_loop = Animation(
+            images, 3, 4, start_frame=3, loop=True, frame_rate=0.4)
+        self.death_sequence = Animation(images, 4, 7)
 
         # sounds
         self.fall_sound = pygame.mixer.Sound("footstep05.ogg")
@@ -119,8 +131,9 @@ class Player(object):
         self.landed_hard = False
         self.ground_velocity = Vec2d.zero()
         self.ground_slope = 0
+        self.current_facing = self.right_key
 
-    def update(self):
+    def update(self, pressed_keys):
         self.landed = False
         self.landed_hard = False
 
@@ -140,8 +153,18 @@ class Player(object):
                 self.ground_slope = n.x / n.y
         self.body.each_arbiter(calculate_landing)
 
+        if self.health < 0:
+            return  # No moving around for you!
+
         if self.landed and self.ground_slope < 2:
             self.remaining_jumps = self.max_jumps
+
+        # Jump
+        if pressed_keys.get(self.jump_key) == 1:
+            self.jump()
+
+        # Move
+        self.move(pressed_keys)
 
     def jump(self):
         if self.remaining_jumps:
@@ -154,21 +177,25 @@ class Player(object):
 
         # play different animations depending on what's going on
         # TODO: These are all screwed up
-        if self.landed and abs(self.feet.surface_velocity.x) > 1:
+        flip = self.current_facing == self.left_key
+
+        if self.health < 0:
+            self.death_sequence.draw(screen, position, flip)
+        elif self.landed and abs(self.feet.surface_velocity.x) > 1:
             # walking
-            self.walk_loop.draw(screen, position)
+            self.walk_loop.draw(screen, position, flip)
         elif self.landed:
             # idle
-            self.idle_loop.draw(screen, position)
+            self.idle_loop.draw(screen, position, flip)
         elif self.remaining_jumps > 0:
             # falling
-            self.jump_loop.draw(screen, position)
+            self.jump_loop.draw(screen, position, flip)
         elif self.remaining_jumps == 0:
             # spinning
-            self.spin_loop.draw(screen, position)
+            self.spin_loop.draw(screen, position, flip)
         else:
             # I dunno what else to do
-            self.idle_loop.draw(screen, position)
+            self.idle_loop.draw(screen, position, flip)
 
         # Did we land?
         if self.landed_hard:
@@ -177,8 +204,10 @@ class Player(object):
     def move(self, keys):
         target_vx = 0
         if keys.get(self.left_key):
+            self.current_facing = self.left_key
             target_vx = -self.speed
         if keys.get(self.right_key):
+            self.current_facing = self.right_key
             target_vx = self.speed
         self.feet.surface_velocity = (target_vx, 0)
 
@@ -390,12 +419,7 @@ def main():
 
         # Update players
         for player in players:
-            player.update()
-        for player in players:
-            if pressed_keys.get(player.jump_key) == 1:
-                player.jump()
-        for player in players:
-            player.move(pressed_keys)
+            player.update(pressed_keys)
 
         # Move any moving platforms
         world.update(dt, players)
