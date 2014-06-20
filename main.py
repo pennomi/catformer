@@ -9,12 +9,12 @@ Minimalist Tileset by Blarget2
 http://opengameart.org/content/minimalist-pixel-tileset
 """
 
-# TODO:
+# TODO ROADMAP:
 # * Rework animations entirely
 # * Mirroring animations
 # * Camera
-# * Tiles and parallax loading from file
-# * Shooting stuff
+# * Shooting stuff and death
+# * Parallax
 
 from xml.etree import ElementTree
 
@@ -43,14 +43,44 @@ SPACE.add_collision_handler(
     begin=jump_through_collision_handler)
 
 
+class Animation(object):
+    def __init__(self, img, row, frame_count, start_frame=0, loop=False, frame_rate=.15):
+        self.img = img
+        self.row = row
+        self.frame_count = frame_count
+        self.start_frame = start_frame
+        self.loop = loop
+        self.frame_rate = frame_rate
+        self.current_frame = 0
+        self.done = False
+
+    def draw(self, screen, pos):
+        frame = int(self.current_frame)
+        self.current_frame += self.frame_rate
+        if self.current_frame >= self.frame_count:
+            if self.loop:
+                self.current_frame = 0
+            else:
+                self.current_frame -= self.frame_rate  # stick on the last frame
+                self.done = True
+        # TODO: remove hardcoded sprite size
+        screen.blit(self.img, to_pygame(pos, screen),
+                    ((frame + self.start_frame) * 128, self.row * 128, 128, 128))
+
+
 class Player(object):
     def __init__(self, name, img, up=KEYS.K_UP, left=KEYS.K_LEFT,
                  right=KEYS.K_RIGHT, down=KEYS.K_DOWN):
         self.name = name
 
         # sprites
-        self.frame_number = 0
         self.img = pygame.image.load(img)
+
+        # animations
+        self.idle_loop = Animation(self.img, 0, 4, loop=True)
+        self.walk_loop = Animation(self.img, 1, 8, loop=True)
+        self.jump_loop = Animation(self.img, 2, 2, start_frame=2, loop=True)
+        self.spin_loop = Animation(self.img, 3, 4, start_frame=3, loop=True, frame_rate=0.4)
 
         # sounds
         self.fall_sound = pygame.mixer.Sound("footstep05.ogg")
@@ -69,13 +99,11 @@ class Player(object):
         self.head = pymunk.Circle(self.body, 14, (12, 7))
         self.head.collision_type = PLAYER_COLLISION_TYPE
         self.head.friction = 0
-        self.head.ignore_draw = True
 
         self.feet = pymunk.Circle(self.body, 14, (12, -16))
         self.feet.collision_type = 1
         # TODO: Make this zero whilst falling
         self.feet.friction = 2
-        self.feet.ignore_draw = True
 
         SPACE.add(self.body, self.head, self.feet)
 
@@ -122,29 +150,30 @@ class Player(object):
             self.remaining_jumps -= 1
 
     def draw(self, screen):
-        # play different animations depending on what's going on
-        # TODO: These are all screwed up
-        if self.landed and abs(self.ground_velocity.x) > 1:
-            animation_offset = 128 * 0
-        elif not self.landed:
-            animation_offset = 128 * 1
-        else:
-            # walking animation
-            animation_offset = 128 * (self.frame_number / 8 % 4)
-
         # match sprite to the physics object
         position = self.body.position + (-48, 76)
 
-        # perform the actual draw
-        screen.blit(self.img, to_pygame(position, screen),
-                    (animation_offset, 128 * 0, 128, 128))
+        # play different animations depending on what's going on
+        # TODO: These are all screwed up
+        if self.landed and abs(self.feet.surface_velocity.x) > 1:
+            # walking
+            self.walk_loop.draw(screen, position)
+        elif self.landed:
+            # idle
+            self.idle_loop.draw(screen, position)
+        elif self.remaining_jumps > 0:
+            # falling
+            self.jump_loop.draw(screen, position)
+        elif self.remaining_jumps == 0:
+            # spinning
+            self.spin_loop.draw(screen, position)
+        else:
+            # I dunno what else to do
+            self.idle_loop.draw(screen, position)
 
         # Did we land?
         if self.landed_hard:
             self.fall_sound.play()
-
-        # Get ready for the next frame
-        self.frame_number += 1
 
     def move(self, keys):
         target_vx = 0
@@ -308,7 +337,7 @@ class Platform(object):
 def main():
     fps = 60
     dt = 1. / fps
-    debug = True
+    debug = False
 
     # Initialize the game
     pygame.mixer.pre_init(44100, -16, 1, 512)  # adjusts for sound lag
