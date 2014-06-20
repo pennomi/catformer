@@ -10,7 +10,6 @@ http://opengameart.org/content/minimalist-pixel-tileset
 """
 
 # TODO ROADMAP:
-# * Rework animations entirely
 # * Mirroring animations
 # * Camera
 # * Shooting stuff and death
