@@ -10,7 +10,6 @@ http://opengameart.org/content/minimalist-pixel-tileset
 """
 
 # TODO ROADMAP:
-# * Mirroring animations
 # * Camera
 # * Shooting stuff and death
 # * Parallax
@@ -29,6 +28,7 @@ from pymunk.pygame_util import to_pygame
 # Begin by initializing some constants for the physics world
 PLAYER_COLLISION_TYPE = 1
 JUMP_THROUGH_COLLISION_TYPE = 2
+BULLET_COLLISION_TYPE = 3
 
 
 def jump_through_collision_handler(space, arbiter):
@@ -40,6 +40,47 @@ SPACE.gravity = (0, -1000)  # in px/sec^2
 SPACE.add_collision_handler(
     PLAYER_COLLISION_TYPE, JUMP_THROUGH_COLLISION_TYPE,
     begin=jump_through_collision_handler)
+SPACE.add_collision_handler(
+    PLAYER_COLLISION_TYPE, JUMP_THROUGH_COLLISION_TYPE,
+    begin=jump_through_collision_handler)
+
+
+def bullet_velocity_func(body, gravity, damping, dt):
+    return body.velocity
+
+
+class Bullet(object):
+    def __init__(self, owner, gravity=False):
+        self.radius = 5
+        self.speed = 500
+        self.ttl = 40
+
+        self.shot_sound = pygame.mixer.Sound("C_28P.ogg")
+        self.shot_sound.play()
+
+        facing_left = owner.current_facing == owner.left_key
+        vel = Vec2d(-self.speed, 0) if facing_left else Vec2d(self.speed, 0)
+        offset = Vec2d(0, 0) if facing_left else Vec2d(20, 0)
+        self.body = pymunk.Body(1, pymunk.inf)
+        self.body.position = owner.body.position + offset
+        self.body.velocity = owner.body.velocity + vel
+        if not gravity:
+            self.body.velocity_func = bullet_velocity_func
+        self.shape = pymunk.Circle(self.body, self.radius, (0, 0))
+        self.shape.collision_type = BULLET_COLLISION_TYPE
+        self.shape.friction = 0
+        SPACE.add(self.body, self.shape)
+
+    def update(self):
+        self.ttl -= 1
+        if self.ttl < 0:
+            SPACE.remove(self.body, self.shape)
+            return False
+        return True
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, (255, 0, 0, 0),
+                           to_pygame(self.body.position, screen), self.radius)
 
 
 class Animation(object):
@@ -77,7 +118,7 @@ class Animation(object):
 
 class Player(object):
     def __init__(self, name, img, up=KEYS.K_UP, left=KEYS.K_LEFT,
-                 right=KEYS.K_RIGHT, down=KEYS.K_DOWN):
+                 right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE):
         self.name = name
 
         # sprites
@@ -101,9 +142,10 @@ class Player(object):
         self.left_key = left
         self.right_key = right
         self.down_key = down
+        self.shoot_key = shoot
 
         # physics
-        self.body = pymunk.Body(5, pymunk.inf)
+        self.body = pymunk.Body(5, pymunk.inf)  # mass, moment
         self.body.position = 100, 100
 
         # TODO: heads should be a separate collision type
@@ -125,6 +167,7 @@ class Player(object):
         self.jump_speed = 400
         self.max_health = 3
         self.health = self.max_health  # TODO: property with set/getters
+        self.shot_cooldown = 0
 
         # State tracking
         self.landed = False
@@ -132,17 +175,26 @@ class Player(object):
         self.ground_velocity = Vec2d.zero()
         self.ground_slope = 0
         self.current_facing = self.right_key
+        self.bullets = []
 
     def update(self, pressed_keys):
+        for b in self.bullets[:]:  # iterate over a copy
+            if not b.update():
+                self.bullets.remove(b)
+
+        # Tick the cooldown
+        if self.shot_cooldown:
+            self.shot_cooldown -= 1
         self.landed = False
         self.landed_hard = False
 
         def calculate_landing(arbiter):
             n = -arbiter.contacts[0].normal
-            if n.y > 0:
+            shape = arbiter.shapes[1]
+            if n.y > 0 and shape.collision_type != BULLET_COLLISION_TYPE:
                 # only one of these ever gets this far
                 # wrap in Vec2d to copy the vector
-                v = Vec2d(arbiter.shapes[1].body.velocity)
+                v = Vec2d(shape.body.velocity)
                 self.ground_velocity = v
                 self.landed = True
                 # 100 is landed, 1000 is "being squished"
@@ -165,6 +217,15 @@ class Player(object):
 
         # Move
         self.move(pressed_keys)
+
+        if pressed_keys.get(self.shoot_key):
+            self.shoot()
+
+    def shoot(self):
+        if self.shot_cooldown:
+            return
+        self.bullets.append(Bullet(self))
+        self.shot_cooldown = 10
 
     def jump(self):
         if self.remaining_jumps:
@@ -200,6 +261,10 @@ class Player(object):
         # Did we land?
         if self.landed_hard:
             self.fall_sound.play()
+
+        # Draw our bullets
+        for bullet in self.bullets:
+            bullet.draw(screen)
 
     def move(self, keys):
         target_vx = 0
@@ -368,7 +433,7 @@ def main():
     debug = False
 
     # Initialize the game
-    pygame.mixer.pre_init(44100, -16, 1, 512)  # adjusts for sound lag
+    pygame.mixer.pre_init(frequency=44100, size=-16, channels=1, buffer=512)  # adjusts for sound lag
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     clock = pygame.time.Clock()
@@ -381,9 +446,10 @@ def main():
     # player
     player1 = Player("Player1", "cat1.png",
                      up=KEYS.K_UP, left=KEYS.K_LEFT,
-                     right=KEYS.K_RIGHT, down=KEYS.K_DOWN)
+                     right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE)
     player2 = Player("Player2", "cat1.png",
-                     up=KEYS.K_w, left=KEYS.K_a, right=KEYS.K_d, down=KEYS.K_s)
+                     up=KEYS.K_w, left=KEYS.K_a,
+                     right=KEYS.K_d, down=KEYS.K_s, shoot=KEYS.K_e)
     players = [player1, player2]
 
     # track how long each key has been pressed
