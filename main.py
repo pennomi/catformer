@@ -7,6 +7,9 @@ http://opengameart.org/content/cat-fighter-sprite-sheet
 
 Minimalist Tileset by Blarget2
 http://opengameart.org/content/minimalist-pixel-tileset
+
+Music by deadEarth
+http://opengameart.org/content/a-fight
 """
 
 # TODO ROADMAP:
@@ -51,9 +54,10 @@ def bullet_velocity_func(body, gravity, damping, dt):
 
 class Bullet(object):
     def __init__(self, owner, gravity=False):
-        self.radius = 5
+        self.radius = 3
         self.speed = 500
         self.ttl = 40
+        self.cooldown = 10
 
         self.shot_sound = pygame.mixer.Sound("C_28P.ogg")
         self.shot_sound.play()
@@ -79,7 +83,7 @@ class Bullet(object):
         return True
 
     def draw(self, screen):
-        pygame.draw.circle(screen, (255, 0, 0, 0),
+        pygame.draw.circle(screen, (0, 0, 0, 0),
                            to_pygame(self.body.position, screen), self.radius)
 
 
@@ -224,8 +228,9 @@ class Player(object):
     def shoot(self):
         if self.shot_cooldown:
             return
-        self.bullets.append(Bullet(self))
-        self.shot_cooldown = 10
+        bullet = Bullet(self)
+        self.bullets.append(bullet)
+        self.shot_cooldown = bullet.cooldown
 
     def jump(self):
         if self.remaining_jumps:
@@ -433,12 +438,16 @@ def main():
     debug = False
 
     # Initialize the game
-    pygame.mixer.pre_init(frequency=44100, size=-16, channels=1, buffer=512)  # adjusts for sound lag
+    pygame.mixer.pre_init(frequency=44100, size=-16, channels=1, buffer=512)
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     clock = pygame.time.Clock()
     running = True
     font = pygame.font.SysFont("Arial", 16)
+
+    # Music!
+    pygame.mixer.music.load("fight.mp3")
+    pygame.mixer.music.play(-1)  # loop forever
 
     # Load the world
     world = TileWorld('level.tmx')
