@@ -16,8 +16,7 @@ http://opengameart.org/content/minimalist-pixel-tileset
 # * Tiles and parallax loading from file
 # * Shooting stuff
 
-import json
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 
 import pygame
 from pygame import locals as KEYS
@@ -81,37 +80,41 @@ class Player(object):
         SPACE.add(self.body, self.head, self.feet)
 
         # Character stats
-        self.remaining_jumps = 2
+        self.max_jumps = 2
+        self.remaining_jumps = self.max_jumps
         self.speed = 100
         self.jump_speed = 400
-        self.health = 3
+        self.max_health = 3
+        self.health = self.max_health  # TODO: property with set/getters
 
         # State tracking
         self.landed = False
-        self.landing_speed = 0
-
+        self.landed_hard = False
         self.ground_velocity = Vec2d.zero()
+        self.ground_slope = 0
 
     def update(self):
-        self.ground_velocity = Vec2d.zero()
         self.landed = False
+        self.landed_hard = False
 
-        # calculate useful local variables
-        grounding = {}
-
-        def get_grounding(arbiter):
+        def calculate_landing(arbiter):
             n = -arbiter.contacts[0].normal
             if n.y > 0:
                 # only one of these ever gets this far
-                self.ground_velocity = arbiter.shapes[1].body.velocity
+                # wrap in Vec2d to copy the vector
+                v = Vec2d(arbiter.shapes[1].body.velocity)
+                self.ground_velocity = v
                 self.landed = True
-                self.landing_speed = arbiter.total_impulse.y
-                grounding['slope'] = n.x / n.y
+                # 100 is landed, 1000 is "being squished"
+                landing_speed = arbiter.total_impulse.y / self.body.mass
+                self.landed_hard = landing_speed > 100
+                if landing_speed > 1000:
+                    self.health -= 1
+                self.ground_slope = n.x / n.y
+        self.body.each_arbiter(calculate_landing)
 
-        self.body.each_arbiter(get_grounding)
-
-        if self.landed and grounding['slope'] < 2:
-            self.remaining_jumps = 2
+        if self.landed and self.ground_slope < 2:
+            self.remaining_jumps = self.max_jumps
 
     def jump(self):
         if self.remaining_jumps:
@@ -137,7 +140,7 @@ class Player(object):
                     (animation_offset, 128 * 0, 128, 128))
 
         # Did we land?
-        if self.landing_speed / self.body.mass > 200:
+        if self.landed_hard:
             self.fall_sound.play()
 
         # Get ready for the next frame
@@ -181,35 +184,57 @@ class Tileset(object):
                     (source_x, source_y, self.tile_width, self.tile_height))
 
 
-class World(object):
+class TileWorld(object):
     def __init__(self, filename):
+        # TODO: this class owns the camera and probably the players
+
         # Load the Tileset
         self.tileset = Tileset('mininicular.png')
 
         # Parse the TMX
-        self.tree = ET.parse(filename)
+        self.tree = ElementTree.parse(filename)
         root = self.tree.getroot()
         for layer in root.findall('layer'):
             # This is the csv of the map data
             csv = layer.findall('data')[0].text
             self.data = [row for row in csv.split('\n')]
             self.data.reverse()  # pygame is opposite of Tiled
-        map_height = 32 * 50  # TODO: hardcoded
+        self.map_height = 32 * 50  # TODO: hardcoded
+
         # These are the collision objects
+        self.platforms = []
         for object_group in root.findall('objectgroup'):
             for obj in object_group.iter('object'):
                 jump_through = False
+                speed = 1
+                waypoints = []
+                group_offset = Vec2d(int(obj.get('x')), int(obj.get('y')))
                 for p in obj.iter('property'):
                     if p.get('name') == "jump_through":
                         jump_through = True
+                    if p.get('name') == "speed":
+                        speed = int(p.get('value'))
+                    if p.get('name') == "waypoints":
+                        waypoints = self.pointify(p.get('value'))
                 line = obj.find('polyline')
-                group_x = int(obj.get('x'))
-                group_y = int(obj.get('y'))
-                point_strings = line.get('points').split()
-                point_strings = [p.split(',') for p in point_strings]
-                point_strings = [(group_x + int(p[0]), map_height-group_y-int(p[1])) for p in point_strings]
-                print(point_strings)
-                Platform(point_strings, jump_through=jump_through)
+                points = self.pointify(line.get('points'),
+                                       group_offset=group_offset)
+                p = Platform(points, jump_through=jump_through, speed=speed,
+                             waypoints=waypoints)
+                self.platforms.append(p)
+
+    def pointify(self, csv_string, group_offset=Vec2d.zero()):
+        if group_offset.y:
+            offset = self.map_height - group_offset.y
+        else:
+            offset = 0
+        point_strings = [p.split(',') for p in csv_string.split()]
+        return [(group_offset.x + int(p[0]),
+                 offset-int(p[1])) for p in point_strings]
+
+    def update(self, dt, players):
+        for p in self.platforms:
+            p.update(dt, players)
 
     def draw(self, screen):
         screen_h = screen.get_height() + 32
@@ -228,14 +253,18 @@ class World(object):
 
 
 class Platform(object):
-    def __init__(self, points, jump_through=False):
-        is_moving = False  # bool(path.get("positions"))
+    def __init__(self, points, jump_through=False, waypoints=None, speed=1):
+        self.waypoints = waypoints
+        self.speed = speed
+        self.target_index = 0
+        is_moving = bool(self.waypoints)
+
         # Create the body type
         if is_moving:
             self.body = pymunk.Body(pymunk.inf, pymunk.inf)
         else:
             self.body = SPACE.static_body
-        # Keep track of moving platforms
+
         for i in xrange(len(points)-1):
             # Make and configure the physics object
             seg = pymunk.Segment(self.body, points[i], points[i+1], 5)
@@ -246,32 +275,28 @@ class Platform(object):
                 seg.color = (255, 255, 0, 255)
             if is_moving:
                 seg.color = THECOLORS["blue"]
-                seg.body.position = Vec2d(path["positions"][0])
+                seg.body.position = Vec2d(self.waypoints[0])
             # Add it to the world
             SPACE.add(seg)
 
-        # Moving platforms need to be operated on later
-        if is_moving:
-            plat = MovingPlatform(self.body, path["positions"],
-                                  path.get("speed", 1))
-            moving_platforms.append(plat)
+    def update(self, dt, players):
+        if not self.waypoints:
+            return  # non-moving platforms don't matter
 
+        # Follow the average position of the players
+        # Not useful here, but potentially useful for camera
+        #position = Vec2d(0, 0)
+        #for player in players:
+        #    position += player.feet.body.position
+        #position /= len(players)
+        #destination = position
 
-class MovingPlatform(object):
-    def __init__(self, body, positions, speed):
-        self.body = body
-        self.positions = positions
-        self.speed = speed
-
-        # Keep track of the active point
-        self.target_index = 0
-
-    def update(self, dt):
-        destination = self.positions[self.target_index]
+        destination = self.waypoints[self.target_index]
         current_pos = Vec2d(self.body.position)
+
         distance = current_pos.get_distance(destination)
         if distance < self.speed:
-            self.target_index = (self.target_index + 1) % len(self.positions)
+            self.target_index = (self.target_index + 1) % len(self.waypoints)
             t = 1
         else:
             t = self.speed / distance
@@ -283,6 +308,7 @@ class MovingPlatform(object):
 def main():
     fps = 60
     dt = 1. / fps
+    debug = True
 
     # Initialize the game
     pygame.mixer.pre_init(44100, -16, 1, 512)  # adjusts for sound lag
@@ -292,44 +318,8 @@ def main():
     running = True
     font = pygame.font.SysFont("Arial", 16)
 
-    # Generate the visible world
-    world = World('level.tmx')
-
-    # Generate the physics world
-    moving_platforms = []
-
-    with open("level.json", 'r') as infile:
-        level = json.load(infile)
-
-    for path in level["paths"]:
-        points = path["points"]
-        is_moving = bool(path.get("positions"))
-        is_jump_through = bool(path.get("jump_through"))
-        # Create the body type
-        if is_moving:
-            body = pymunk.Body(pymunk.inf, pymunk.inf)
-        else:
-            body = SPACE.static_body
-        # Keep track of moving platforms
-        for i in xrange(len(points)-1):
-            # Make and configure the physics object
-            seg = pymunk.Segment(body, points[i], points[i+1], 5)
-            seg.friction = 1
-            seg.group = 1
-            if is_jump_through:
-                seg.collision_type = JUMP_THROUGH_COLLISION_TYPE
-                seg.color = (255, 255, 0, 255)
-            if is_moving:
-                seg.color = THECOLORS["blue"]
-                seg.body.position = Vec2d(path["positions"][0])
-            # Add it to the world
-            SPACE.add(seg)
-
-        # Moving platforms need to be operated on later
-        if is_moving:
-            plat = MovingPlatform(body, path["positions"],
-                                  path.get("speed", 1))
-            moving_platforms.append(plat)
+    # Load the world
+    world = TileWorld('level.tmx')
 
     # player
     player1 = Player("Player1", "cat1.png",
@@ -351,8 +341,12 @@ def main():
             pressed_window_x = event.type == KEYS.QUIT
             pressed_esc = (event.type == KEYS.KEYDOWN and
                            event.key in [KEYS.K_ESCAPE])
+            pressed_q = (event.type == KEYS.KEYDOWN and
+                         event.key in [KEYS.K_q])
             if pressed_window_x or pressed_esc:
                 running = False  # exit the program
+            if pressed_q:
+                debug = not debug  # toggle debug drawing
         pressed = pygame.key.get_pressed()
         # increment all pressed keys
         for i, k in enumerate(pressed):
@@ -375,20 +369,21 @@ def main():
         for player in players:
             player.move(pressed_keys)
 
-        # Move the moving platforms
-        for platform in moving_platforms:
-            platform.update(dt)
+        # Move any moving platforms
+        world.update(dt, players)
 
         # Draw stuff
         # Clear screen
-        screen.fill((109, 169, 101, 255))  # Light green color
+        screen.fill((128, 125, 55, 255))  # Light green color
         # Draw tiles
         world.draw(screen)
         # Draw players
         for player in players:
             player.draw(screen)
         # Debug draw physics
-        pymunk.pygame_util.draw(screen, SPACE)
+        if debug:
+            # TODO: Make this work with the camera
+            pymunk.pygame_util.draw(screen, SPACE)
         # Draw fps label
         screen.blit(font.render("{} FPS".format(clock.get_fps()), 1,
                                 THECOLORS["white"]), (0, 0))

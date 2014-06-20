@@ -1,9 +1,0 @@
-{"paths": [
-    {"name": "Moving Bucket",
-     "points": [[-25, 25], [-25, 0], [25, 0], [25, 25]],
-     "jump_through": false,
-     "positions": [[100, 0], [400, 200], [400, 500], [100, 500]],
-     "speed": 1
-     }
-]
-}
