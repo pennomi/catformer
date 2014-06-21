@@ -8,6 +8,7 @@ SCREEN_HALF = SCREEN_SIZE / 2
 
 # Physics constants
 SPACE = pymunk.Space()
+# If we were using Python 3, we'd use an IntEnum
 PLAYER_COLLISION_TYPE = 1
 JUMP_THROUGH_COLLISION_TYPE = 2
 BULLET_COLLISION_TYPE = 3
