@@ -170,7 +170,6 @@ class Player(object):
             n = -arbiter.contacts[0].normal
             shape = arbiter.shapes[1]
             if n.y > 0 and shape.collision_type != BULLET_COLLISION_TYPE:
-                # only one of these ever gets this far
                 # wrap in Vec2d to copy the vector
                 v = Vec2d(shape.body.velocity)
                 self.ground_velocity = v
