@@ -70,6 +70,10 @@ class Animation(object):
         self.done = False
 
     def draw(self, screen, pos, flip):
+        # center the sprite
+        position = pos - Vec2d(48, 76)
+
+        # get the portion we should draw
         frame = int(self.current_frame)
         self.current_frame += self.frame_rate
         if self.current_frame >= self.frame_count:
@@ -86,8 +90,7 @@ class Animation(object):
         if flip:
             x = img.get_width() - x - sprite_size
         y = self.row * sprite_size
-        screen.blit(img, to_pygame(pos, screen),
-                    (x, y, sprite_size, sprite_size))
+        screen.blit(img, position, (x, y, sprite_size, sprite_size))
 
 
 class Player(object):
@@ -212,9 +215,9 @@ class Player(object):
             self.remaining_jumps -= 1
 
     def draw(self, screen, camera):
-        # TODO: Health bars!
         # match sprite to the physics object
-        position = self.body.position + Vec2d(-48, 76) - camera + SCREEN_HALF
+        position = self.body.position - camera + SCREEN_HALF
+        position = Vec2d(to_pygame(position, screen))
 
         # play different animations depending on what's going on
         # TODO: These are all screwed up
@@ -237,6 +240,12 @@ class Player(object):
         else:
             # I dunno what else to do
             self.idle_loop.draw(screen, position, flip)
+
+        # Draw health bar
+        health_percent = max(float(self.health) / self.max_health, 0)
+        if health_percent:
+            rect = (position.x, position.y - 35, 30 * health_percent, 5)
+            pygame.draw.rect(screen, (255, 0, 0, 0), rect)
 
         # Did we land?
         if self.landed_hard:
