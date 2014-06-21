@@ -5,7 +5,6 @@ from pygame import locals as KEYS
 from pygame.color import THECOLORS
 
 import pymunk
-from pymunk.pygame_util import to_pygame
 import sys
 
 from game import SCREEN_SIZE, SPACE
@@ -58,7 +57,6 @@ def calculate_input(old_pressed_keys):
 def main():
     fps = 60
     dt = 1. / fps
-    debug = False
 
     # Initialize the game
     pygame.mixer.pre_init(frequency=44100, size=-16, channels=1, buffer=512)
@@ -101,9 +99,7 @@ def main():
         world.draw(screen)
         for player in players:
             player.draw(screen, world.camera)
-        if debug:
-            pymunk.pygame_util.draw(screen, SPACE)  # TODO: camera support
-        # FPS label
+        #pymunk.pygame_util.draw(screen, SPACE)  # TODO: camera support
         screen.blit(font.render("{} FPS".format(clock.get_fps()), 1,
                                 THECOLORS["white"]), (0, 0))
 
