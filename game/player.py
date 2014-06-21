@@ -19,7 +19,7 @@ class Bullet(object):
         self.ttl = 40
         self.cooldown = 10
 
-        self.shot_sound = pygame.mixer.Sound("C_28P.ogg")
+        self.shot_sound = pygame.mixer.Sound("res/sfx/C_28P.ogg")
         self.shot_sound.play()
 
         facing_left = owner.current_facing == owner.left_key
@@ -109,9 +109,9 @@ class Player(object):
         self.death_sequence = Animation(images, 4, 7)
 
         # sounds
-        self.fall_sound = pygame.mixer.Sound("fall.wav")
+        self.fall_sound = pygame.mixer.Sound("res/sfx/fall.wav")
         self.fall_sound.set_volume(0.5)
-        self.jump_sound = pygame.mixer.Sound("jump.wav")
+        self.jump_sound = pygame.mixer.Sound("res/sfx/jump.wav")
         self.jump_sound.set_volume(0.5)
 
         # keybindings

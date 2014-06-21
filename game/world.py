@@ -31,7 +31,7 @@ class TileWorld(object):
         self.camera = Vec2d(0, 0)
 
         # Load the Tileset
-        self.tileset = Tileset('mininicular.png')
+        self.tileset = Tileset('res/images/mininicular.png')
 
         # Parse the TMX
         self.tree = ElementTree.parse(filename)

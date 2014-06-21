@@ -66,15 +66,15 @@ def main():
     font = pygame.font.SysFont("Arial", 16)
 
     # Music!
-    pygame.mixer.music.load("fight.mp3")
+    pygame.mixer.music.load("res/music/fight.mp3")
     pygame.mixer.music.play(-1)  # loop forever
 
     # Load the world
-    world = TileWorld('level.tmx')
-    player1 = Player("Player1", "cat1.png",
+    world = TileWorld('levels/level.tmx')
+    player1 = Player("Player1", "res/images/cat1.png",
                      up=KEYS.K_UP, left=KEYS.K_LEFT,
                      right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE)
-    player2 = Player("Player2", "cat1.png",
+    player2 = Player("Player2", "res/images/cat1.png",
                      up=KEYS.K_w, left=KEYS.K_a,
                      right=KEYS.K_d, down=KEYS.K_s, shoot=KEYS.K_e)
     players = [player1, player2]
