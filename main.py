@@ -53,6 +53,11 @@ SPACE.add_collision_handler(
     begin=bullet_collision_handler)
 
 
+# Some screen initialization constants
+SCREEN_SIZE = Vec2d(800, 600)
+SCREEN_HALF = SCREEN_SIZE / 2
+
+
 def bullet_velocity_func(body, gravity, damping, dt):
     return body.velocity
 
@@ -99,7 +104,7 @@ class Bullet(object):
         if not self.active:
             return
         pygame.draw.circle(screen, (0, 0, 0, 0),
-                           to_pygame(self.body.position - camera + Vec2d(400, 300), screen), self.radius)
+                           to_pygame(self.body.position - camera + SCREEN_HALF, screen), self.radius)
 
 
 class Animation(object):
@@ -255,7 +260,7 @@ class Player(object):
 
     def draw(self, screen, camera):
         # match sprite to the physics object
-        position = self.body.position + Vec2d(-48, 76) - camera + Vec2d(400, 300)
+        position = self.body.position + Vec2d(-48, 76) - camera + SCREEN_HALF
 
         # play different animations depending on what's going on
         # TODO: These are all screwed up
@@ -341,8 +346,12 @@ class TileWorld(object):
         for layer in root.findall('layer'):
             # This is the csv of the map data
             csv = layer.findall('data')[0].text
-            self.data = [row for row in csv.split('\n')]
-            self.data.reverse()  # pygame is opposite of Tiled
+            if layer.get('name') == 'Foreground':
+                self.foreground = [row for row in csv.split('\n')]
+                self.foreground.reverse()  # pygame is opposite of Tiled
+            elif layer.get('name') == 'Background':
+                self.background = [row for row in csv.split('\n')]
+                self.background.reverse()  # pygame is opposite of Tiled
         self.map_height = 32 * 50  # TODO: hardcoded
 
         # These are the collision objects
@@ -367,6 +376,11 @@ class TileWorld(object):
                              waypoints=waypoints)
                 self.platforms.append(p)
 
+        self.foreground_surface = pygame.Surface((32*50, 32*50), pygame.SRCALPHA, 32)
+        self.background_surface = pygame.Surface((32*50, 32*50), pygame.SRCALPHA, 32)
+        self.generate_surface(self.foreground_surface, self.foreground)
+        self.generate_surface(self.background_surface, self.background)
+
     def pointify(self, csv_string, group_offset=Vec2d.zero()):
         if group_offset.y:
             offset = self.map_height - group_offset.y
@@ -381,7 +395,7 @@ class TileWorld(object):
             p.update(dt, players)
 
         # Make the camera follow the center of the players
-        camera_speed = 2
+        camera_speed = 5
         position = Vec2d(0, 0)
         for player in players:
             position += player.feet.body.position
@@ -396,19 +410,24 @@ class TileWorld(object):
         new_pos = current_pos.interpolate_to(destination, t)
         self.camera = new_pos
 
-    def draw(self, screen):
-        screen_h = screen.get_height() + 32
-        screen_w = screen.get_width() + 32
-        # TODO: only iterate over what'll fit on the screen
-        for y, row in enumerate(self.data):
-            for x, tile_id in enumerate(row.split(',')):
+    def generate_surface(self, surf, data):
+        surf.convert_alpha()
+        for y in xrange(len(data)):
+            row = data[y].split(',')
+            for x in xrange(len(row)):
+                tile_id = row[x]
                 if tile_id == '':
                     continue
-                #if x*32 > screen_w:
-                #    continue
-                #if y*32 > screen_h:
-                #    continue
-                self.tileset.draw(screen, int(tile_id), Vec2d(x*32, y*32) - self.camera + Vec2d(400, 300))
+                pos = Vec2d(x*32, y*32)
+                self.tileset.draw(surf, int(tile_id), pos)
+
+    def draw(self, screen):
+        position = Vec2d(self.camera.x, 50*32-self.camera.y) - SCREEN_HALF
+        screen.blit(self.background_surface, (0, 0),
+                    (position.x, position.y, SCREEN_SIZE.x, SCREEN_SIZE.y))
+        screen.blit(self.foreground_surface, (0, 0),
+                    (position.x, position.y, SCREEN_SIZE.x, SCREEN_SIZE.y))
+
 
 
 class Platform(object):
@@ -462,7 +481,7 @@ def main():
     # Initialize the game
     pygame.mixer.pre_init(frequency=44100, size=-16, channels=1, buffer=512)
     pygame.init()
-    screen = pygame.display.set_mode((800, 600))
+    screen = pygame.display.set_mode((int(SCREEN_SIZE.x), int(SCREEN_SIZE.y)))
     clock = pygame.time.Clock()
     running = True
     font = pygame.font.SysFont("Arial", 16)
@@ -523,7 +542,7 @@ def main():
 
         # Draw stuff
         # Clear screen
-        screen.fill((128, 125, 55, 255))  # Light green color
+        screen.fill((54, 54, 54, 255))  # Dark gray color
         # Draw world
         world.draw(screen)
         # Draw players
