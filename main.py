@@ -12,10 +12,6 @@ Music by deadEarth
 http://opengameart.org/content/a-fight
 """
 
-# TODO ROADMAP:
-# * Camera
-# * Shooting stuff and death
-# * Parallax
 import weakref
 
 from xml.etree import ElementTree
@@ -99,11 +95,11 @@ class Bullet(object):
         except KeyError:
             pass
 
-    def draw(self, screen):
+    def draw(self, screen, camera):
         if not self.active:
             return
         pygame.draw.circle(screen, (0, 0, 0, 0),
-                           to_pygame(self.body.position, screen), self.radius)
+                           to_pygame(self.body.position - camera + Vec2d(400, 300), screen), self.radius)
 
 
 class Animation(object):
@@ -190,7 +186,7 @@ class Player(object):
         self.speed = 100
         self.jump_speed = 400
         self.max_health = 10
-        self.health = self.max_health  # TODO: property with set/getters
+        self.health = self.max_health
         self.shot_cooldown = 0
 
         # State tracking
@@ -257,9 +253,9 @@ class Player(object):
             self.body.velocity.y = self.ground_velocity.y + self.jump_speed
             self.remaining_jumps -= 1
 
-    def draw(self, screen):
+    def draw(self, screen, camera):
         # match sprite to the physics object
-        position = self.body.position + (-48, 76)
+        position = self.body.position + Vec2d(-48, 76) - camera + Vec2d(400, 300)
 
         # play different animations depending on what's going on
         # TODO: These are all screwed up
@@ -289,7 +285,7 @@ class Player(object):
 
         # Draw our bullets
         for bullet in self.bullets:
-            bullet.draw(screen)
+            bullet.draw(screen, camera)
 
     def move(self, keys):
         target_vx = 0
@@ -333,7 +329,8 @@ class Tileset(object):
 
 class TileWorld(object):
     def __init__(self, filename):
-        # TODO: this class owns the camera and probably the players
+        # Somebody set up us the camera
+        self.camera = Vec2d(0, 0)
 
         # Load the Tileset
         self.tileset = Tileset('mininicular.png')
@@ -383,20 +380,35 @@ class TileWorld(object):
         for p in self.platforms:
             p.update(dt, players)
 
+        # Make the camera follow the center of the players
+        camera_speed = 2
+        position = Vec2d(0, 0)
+        for player in players:
+            position += player.feet.body.position
+        position /= len(players)
+        destination = position
+        current_pos = self.camera
+        distance = current_pos.get_distance(destination)
+        if distance < camera_speed:
+            t = 1
+        else:
+            t = camera_speed / distance
+        new_pos = current_pos.interpolate_to(destination, t)
+        self.camera = new_pos
+
     def draw(self, screen):
         screen_h = screen.get_height() + 32
         screen_w = screen.get_width() + 32
         # TODO: only iterate over what'll fit on the screen
-        # (We'll implement this *after* the camera)
         for y, row in enumerate(self.data):
             for x, tile_id in enumerate(row.split(',')):
                 if tile_id == '':
                     continue
-                if x*32 > screen_w:
-                    continue
-                if y*32 > screen_h:
-                    continue
-                self.tileset.draw(screen, int(tile_id), (x*32, y*32))
+                #if x*32 > screen_w:
+                #    continue
+                #if y*32 > screen_h:
+                #    continue
+                self.tileset.draw(screen, int(tile_id), Vec2d(x*32, y*32) - self.camera + Vec2d(400, 300))
 
 
 class Platform(object):
@@ -429,18 +441,8 @@ class Platform(object):
     def update(self, dt, players):
         if not self.waypoints:
             return  # non-moving platforms don't matter
-
-        # Follow the average position of the players
-        # Not useful here, but potentially useful for camera
-        #position = Vec2d(0, 0)
-        #for player in players:
-        #    position += player.feet.body.position
-        #position /= len(players)
-        #destination = position
-
         destination = self.waypoints[self.target_index]
         current_pos = Vec2d(self.body.position)
-
         distance = current_pos.get_distance(destination)
         if distance < self.speed:
             self.target_index = (self.target_index + 1) % len(self.waypoints)
@@ -522,11 +524,11 @@ def main():
         # Draw stuff
         # Clear screen
         screen.fill((128, 125, 55, 255))  # Light green color
-        # Draw tiles
+        # Draw world
         world.draw(screen)
         # Draw players
         for player in players:
-            player.draw(screen)
+            player.draw(screen, world.camera)
         # Debug draw physics
         if debug:
             # TODO: Make this work with the camera

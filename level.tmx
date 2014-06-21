@@ -76,12 +76,18 @@
   <object x="389" y="1157">
    <polyline points="0,0 -3,27 29,60 57,61 57,-4 -1,-4"/>
   </object>
-  <object x="74" y="1497">
+  <object x="465" y="952">
    <properties>
     <property name="speed" value="1"/>
     <property name="waypoints" value="0,0 100,0 100,-100 0,-100"/>
    </properties>
    <polyline points="0,0 0,22 63,22 63,1"/>
+  </object>
+  <object x="512" y="1474">
+   <polyline points="0,0 33,1 60,31 162,34 194,67 322,66 325,12 356,-10 355,-34 385,-64"/>
+  </object>
+  <object x="613" y="1280">
+   <polyline points="0,0 28,-29 149,-28 123,1 1,0"/>
   </object>
  </objectgroup>
 </map>
