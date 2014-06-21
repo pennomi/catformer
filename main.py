@@ -16,6 +16,7 @@ http://opengameart.org/content/a-fight
 # * Camera
 # * Shooting stuff and death
 # * Parallax
+import weakref
 
 from xml.etree import ElementTree
 
@@ -38,14 +39,22 @@ def jump_through_collision_handler(space, arbiter):
     # pass through only if going up
     return arbiter.shapes[0].body.velocity.y < 0
 
+
+def bullet_collision_handler(space, arbiter):
+    arbiter.shapes[0].body.player.health -= 1
+    arbiter.shapes[1].body.bullet.destroy()
+    return True
+
+# TODO: Bullets hitting the wall shouldn't ricochet, they should disappear
+
 SPACE = pymunk.Space()
 SPACE.gravity = (0, -1000)  # in px/sec^2
 SPACE.add_collision_handler(
     PLAYER_COLLISION_TYPE, JUMP_THROUGH_COLLISION_TYPE,
     begin=jump_through_collision_handler)
 SPACE.add_collision_handler(
-    PLAYER_COLLISION_TYPE, JUMP_THROUGH_COLLISION_TYPE,
-    begin=jump_through_collision_handler)
+    PLAYER_COLLISION_TYPE, BULLET_COLLISION_TYPE,
+    begin=bullet_collision_handler)
 
 
 def bullet_velocity_func(body, gravity, damping, dt):
@@ -68,21 +77,31 @@ class Bullet(object):
         self.body = pymunk.Body(1, pymunk.inf)
         self.body.position = owner.body.position + offset
         self.body.velocity = owner.body.velocity + vel
+        self.body.bullet = weakref.proxy(self)
         if not gravity:
             self.body.velocity_func = bullet_velocity_func
         self.shape = pymunk.Circle(self.body, self.radius, (0, 0))
         self.shape.collision_type = BULLET_COLLISION_TYPE
         self.shape.friction = 0
         SPACE.add(self.body, self.shape)
+        self.active = True
 
     def update(self):
         self.ttl -= 1
         if self.ttl < 0:
+            self.destroy()
+        return self.active
+
+    def destroy(self):
+        try:
             SPACE.remove(self.body, self.shape)
-            return False
-        return True
+            self.active = False
+        except KeyError:
+            pass
 
     def draw(self, screen):
+        if not self.active:
+            return
         pygame.draw.circle(screen, (0, 0, 0, 0),
                            to_pygame(self.body.position, screen), self.radius)
 
@@ -151,6 +170,7 @@ class Player(object):
         # physics
         self.body = pymunk.Body(5, pymunk.inf)  # mass, moment
         self.body.position = 100, 100
+        self.body.player = weakref.proxy(self)
 
         # TODO: heads should be a separate collision type
         self.head = pymunk.Circle(self.body, 14, (12, 7))
@@ -169,7 +189,7 @@ class Player(object):
         self.remaining_jumps = self.max_jumps
         self.speed = 100
         self.jump_speed = 400
-        self.max_health = 3
+        self.max_health = 10
         self.health = self.max_health  # TODO: property with set/getters
         self.shot_cooldown = 0
 
