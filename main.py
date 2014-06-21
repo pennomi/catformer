@@ -73,8 +73,6 @@ def main():
 
     # Load the world
     world = TileWorld('level.tmx')
-
-    # player
     player1 = Player("Player1", "cat1.png",
                      up=KEYS.K_UP, left=KEYS.K_LEFT,
                      right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE)
@@ -92,31 +90,23 @@ def main():
         # Input management
         pressed_keys = calculate_input(pressed_keys)
 
-        # Update physics
+        # Update world
         SPACE.step(dt)
-
-        # Update players
+        world.update(dt, players)
         for player in players:
             player.update(pressed_keys)
 
-        # Move any moving platforms
-        world.update(dt, players)
-
         # Draw stuff
-        # Clear screen
         screen.fill((54, 54, 54, 255))  # Dark gray color
-        # Draw world
         world.draw(screen)
-        # Draw players
         for player in players:
             player.draw(screen, world.camera)
-        # Debug draw physics
         if debug:
-            # TODO: Make this work with the camera
-            pymunk.pygame_util.draw(screen, SPACE)
-        # Draw fps label
+            pymunk.pygame_util.draw(screen, SPACE)  # TODO: camera support
+        # FPS label
         screen.blit(font.render("{} FPS".format(clock.get_fps()), 1,
                                 THECOLORS["white"]), (0, 0))
+
         # Apply the drawing to the screen
         pygame.display.flip()
 
