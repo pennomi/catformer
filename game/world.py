@@ -106,9 +106,9 @@ class TileWorld(object):
 
     def generate_surface(self, surf, data):
         surf.convert_alpha()
-        for y in xrange(len(data)):
+        for y in range(len(data)):
             row = data[y].split(',')
-            for x in xrange(len(row)):
+            for x in range(len(row)):
                 tile_id = row[x]
                 if tile_id == '':
                     continue
@@ -137,7 +137,7 @@ class Platform(object):
         else:
             self.body = SPACE.static_body
 
-        for i in xrange(len(points)-1):
+        for i in range(len(points)-1):
             # Make and configure the physics object
             seg = pymunk.Segment(self.body, points[i], points[i+1], 5)
             seg.friction = 1

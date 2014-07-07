@@ -48,7 +48,7 @@ def calculate_input(old_pressed_keys):
         if k:
             old_pressed_keys[i] = old_pressed_keys.get(i, 0) + 1
     # clear out any keys that are no longer pressed
-    for k in old_pressed_keys.keys():
+    for k in list(old_pressed_keys.keys()):
         if not pressed[k]:
             del old_pressed_keys[k]
     return old_pressed_keys
