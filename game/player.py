@@ -185,7 +185,7 @@ class Player(object):
                 self.ground_slope = n.x / n.y
         self.body.each_arbiter(calculate_landing)
 
-        if self.health < 0:
+        if self.health <= 0:
             return  # No moving around for you!
 
         if self.landed and self.ground_slope < 2:
@@ -223,7 +223,7 @@ class Player(object):
         # TODO: These are all screwed up
         flip = self.current_facing == self.left_key
 
-        if self.health < 0:
+        if self.health <= 0:
             self.death_sequence.draw(screen, position, flip)
         elif self.landed and abs(self.feet.surface_velocity.x) > 1:
             # walking

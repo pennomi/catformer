@@ -90,17 +90,15 @@ class TileWorld(object):
 
         # Make the camera follow the center of the players
         camera_speed = 5
-        position = Vec2d(0, 0)
-        for player in players:
-            position += player.feet.body.position
-        position /= len(players)
+        living_players = [p for p in players if p.health > 0]
+        count = len(living_players)
+        if not count:
+            return
+        position = sum(p.feet.body.position for p in living_players) / count
         destination = position
         current_pos = self.camera
         distance = current_pos.get_distance(destination)
-        if distance < camera_speed:
-            t = 1
-        else:
-            t = camera_speed / distance
+        t = 1 if distance < camera_speed else camera_speed / distance
         new_pos = current_pos.interpolate_to(destination, t)
         self.camera = new_pos
 
