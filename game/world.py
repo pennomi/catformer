@@ -36,15 +36,13 @@ class TileWorld(object):
         # Parse the TMX
         self.tree = ElementTree.parse(filename)
         root = self.tree.getroot()
+        layers = []
         for layer in root.findall('layer'):
             # This is the csv of the map data
             csv = layer.findall('data')[0].text
-            if layer.get('name') == 'Foreground':
-                self.foreground = [row for row in csv.split('\n')]
-                self.foreground.reverse()  # pygame is opposite of Tiled
-            elif layer.get('name') == 'Background':
-                self.background = [row for row in csv.split('\n')]
-                self.background.reverse()  # pygame is opposite of Tiled
+            # pygame is opposite of Tiled, so needs reversed
+            new_layer = list(reversed([row for row in csv.split('\n')]))
+            layers.append(new_layer)
         self.map_height = 32 * 50  # TODO: hardcoded
 
         # These are the collision objects
@@ -69,11 +67,13 @@ class TileWorld(object):
                              waypoints=waypoints)
                 self.platforms.append(p)
 
+        # Pre-generate the surfaces
         map_size = (32*50, 32*50)
-        self.foreground_surface = pygame.Surface(map_size, pygame.SRCALPHA, 32)
-        self.background_surface = pygame.Surface(map_size, pygame.SRCALPHA, 32)
-        self.generate_surface(self.foreground_surface, self.foreground)
-        self.generate_surface(self.background_surface, self.background)
+        self.surfaces = []
+        for layer in layers:
+            surf = pygame.Surface(map_size, pygame.SRCALPHA, 32)
+            self.generate_surface(surf, layer)
+            self.surfaces.append(surf)
 
     def pointify(self, csv_string, group_offset=Vec2d.zero()):
         if group_offset.y:
@@ -114,13 +114,13 @@ class TileWorld(object):
                 self.tileset.draw(surf, int(tile_id), pos)
 
     def draw(self, screen):
-        # TODO: Parallax!
         position = Vec2d(self.camera.x, 50*32-self.camera.y) - SCREEN_HALF
-        screen.blit(self.background_surface, (0, 0),
-                    (position.x, position.y, SCREEN_SIZE.x, SCREEN_SIZE.y))
-        screen.blit(self.foreground_surface, (0, 0),
-                    (position.x, position.y, SCREEN_SIZE.x, SCREEN_SIZE.y))
-
+        count = len(self.surfaces) - 1
+        for i, surf in enumerate(self.surfaces):
+            parallax_factor = 1.0 - (1. / count) * (count - i)
+            offset = position * parallax_factor
+            p = (offset.x, offset.y, SCREEN_SIZE.x, SCREEN_SIZE.y)
+            screen.blit(surf, (0, 0), p)
 
 class Platform(object):
     def __init__(self, points, jump_through=False, waypoints=None, speed=1):
