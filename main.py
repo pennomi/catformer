@@ -70,10 +70,10 @@ def main():
 
     # Load the world
     world = TileWorld('levels/level.tmx')
-    player1 = Player("Player1", "res/images/cat1.png",
+    player1 = Player("Player1", "res/images/cat_gun.png",
                      up=KEYS.K_UP, left=KEYS.K_LEFT,
                      right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE)
-    player2 = Player("Player2", "res/images/cat1.png",
+    player2 = Player("Player2", "res/images/cat_gun.png",
                      up=KEYS.K_w, left=KEYS.K_a,
                      right=KEYS.K_d, down=KEYS.K_s, shoot=KEYS.K_e)
     players = [player1, player2]
