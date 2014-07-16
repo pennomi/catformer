@@ -119,12 +119,14 @@ class TileWorld(object):
 
         for i, surf in enumerate(self.surfaces):
             parallax_factor = 1.0 - (1. / count) * (count - i)
-            offset = position * parallax_factor
-            p = (offset.x,
-                 offset.y,
+            temp = position * parallax_factor
+            offset = position * (1 - parallax_factor)
+            p = (-offset.x if offset.x < 0 else temp.x,
+                 -offset.y if offset.y < 0 else temp.y,
                  SCREEN_SIZE.x,
                  SCREEN_SIZE.y)
-            screen.blit(surf, (0, 0), p)
+            screen.blit(surf, (-position.x if offset.x < 0 else 0,
+                               -position.y if offset.y < 0 else 0), p)
 
 
 class Platform(object):

@@ -144,8 +144,8 @@ class Player(object):
         # Character stats
         self.max_jumps = 2
         self.remaining_jumps = self.max_jumps
-        self.speed = 200  # 100
-        self.jump_speed = 400
+        self.speed = 200
+        self.jump_speed = 500
         self.max_health = 10
         self.health = self.max_health
         self.shot_cooldown = 0

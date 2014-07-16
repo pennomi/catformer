@@ -76,9 +76,6 @@ def main():
     player2 = Player("Player2", "res/images/cat_gun.png",
                      up=KEYS.K_w, left=KEYS.K_a,
                      right=KEYS.K_d, down=KEYS.K_s, shoot=KEYS.K_e)
-
-
-    
     players = [player1, player2]
 
     # track how long each key has been pressed
