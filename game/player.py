@@ -24,7 +24,7 @@ class Bullet(object):
 
         facing_left = owner.current_facing == owner.left_key
         vel = Vec2d(-self.speed, 0) if facing_left else Vec2d(self.speed, 0)
-        offset = Vec2d(0, 0) if facing_left else Vec2d(20, 0)
+        offset = Vec2d(0, -5) if facing_left else Vec2d(20, -5)
         self.body = pymunk.Body(1, pymunk.inf)
         self.body.position = owner.body.position + offset
         self.body.velocity = owner.body.velocity + vel
@@ -104,12 +104,12 @@ class Player(object):
         images = (img, flip_img)
 
         # animations
-        self.idle_loop = Animation(images, 0, 4, loop=True)
-        self.walk_loop = Animation(images, 1, 8, loop=True)
-        self.jump_loop = Animation(images, 2, 2, start_frame=2, loop=True)
+        self.idle_loop = Animation(images, 1, 8, loop=True)
+        self.walk_loop = Animation(images, 3, 8, loop=True)
+        self.jump_loop = Animation(images, 5, 2, start_frame=4, loop=True)
         self.spin_loop = Animation(
-            images, 3, 4, start_frame=3, loop=True, frame_rate=0.4)
-        self.death_sequence = Animation(images, 4, 7)
+            images, 7, 4, loop=True, frame_rate=0.4)
+        self.death_sequence = Animation(images, 8, 7)
 
         # sounds
         self.fall_sound = pygame.mixer.Sound("res/sfx/fall.wav")
