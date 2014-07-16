@@ -116,11 +116,16 @@ class TileWorld(object):
     def draw(self, screen):
         position = Vec2d(self.camera.x, 50*32-self.camera.y) - SCREEN_HALF
         count = len(self.surfaces) - 1
+
         for i, surf in enumerate(self.surfaces):
             parallax_factor = 1.0 - (1. / count) * (count - i)
             offset = position * parallax_factor
-            p = (offset.x, offset.y, SCREEN_SIZE.x, SCREEN_SIZE.y)
+            p = (offset.x,
+                 offset.y,
+                 SCREEN_SIZE.x,
+                 SCREEN_SIZE.y)
             screen.blit(surf, (0, 0), p)
+
 
 class Platform(object):
     def __init__(self, points, jump_through=False, waypoints=None, speed=1):
