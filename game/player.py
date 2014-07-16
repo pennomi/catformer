@@ -126,7 +126,7 @@ class Player(object):
 
         # physics
         self.body = pymunk.Body(5, pymunk.inf)  # mass, moment
-        self.body.position = 100, 100
+        self.body.position = Vec2d(100, 100)
         self.body.player = weakref.proxy(self)
 
         # TODO: heads should be a separate collision type
@@ -275,4 +275,4 @@ class Player(object):
                 self.body.velocity.x, target_vx + self.ground_velocity.x, 10)
 
         # Terminal velocity
-        self.body.velocity.y = max(self.body.velocity.y, -300)
+        self.body.velocity.y = max(self.body.velocity.y, -450)

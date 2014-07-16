@@ -115,16 +115,23 @@ class TileWorld(object):
 
     def draw(self, screen):
         position = Vec2d(self.camera.x, 50*32-self.camera.y) - SCREEN_HALF
-        count = len(self.surfaces) - 1
+        count = len(self.surfaces) - 1.
 
         for i, surf in enumerate(self.surfaces):
-            parallax_factor = 1.0 - (1. / count) * (count - i)
+            parallax_factor = i / count
+
+            # constrain to the top and left
             temp = position * parallax_factor
             offset = position * (1 - parallax_factor)
+
+            # constrain to the bottom and right
+            map_size = Vec2d(32*50, 32*50)
+            size_offset = -position + map_size
+
+            # Get the part of the surface to blit
             p = (-offset.x if offset.x < 0 else temp.x,
                  -offset.y if offset.y < 0 else temp.y,
-                 SCREEN_SIZE.x,
-                 SCREEN_SIZE.y)
+                 size_offset.x, size_offset.y)
             screen.blit(surf, (-position.x if offset.x < 0 else 0,
                                -position.y if offset.y < 0 else 0), p)
 
