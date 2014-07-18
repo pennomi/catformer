@@ -5,7 +5,7 @@ from pygame.color import THECOLORS
 from pymunk import Vec2d
 import pymunk
 from pymunk.pygame_util import to_pygame
-from game import SCREEN_HALF, SCREEN_SIZE, JUMP_THROUGH_COLLISION_TYPE, SPACE
+from game import SCREEN_HALF, JUMP_THROUGH_COLLISION_TYPE, SPACE
 
 
 class Tileset(object):
@@ -31,11 +31,15 @@ class TileWorld(object):
         self.camera = Vec2d(0, 0)
 
         # Load the Tileset
+        # TODO: tileset is hardcoded
         self.tileset = Tileset('res/images/mininicular.png')
 
         # Parse the TMX
         self.tree = ElementTree.parse(filename)
         root = self.tree.getroot()
+        dim = Vec2d(int(root.get('width')), int(root.get('height')))
+        t_size = Vec2d(int(root.get('tilewidth')), int(root.get('tileheight')))
+        self.map_size = Vec2d(t_size.x*dim.x, t_size.y*dim.y)
         layers = []
         for layer in root.findall('layer'):
             # This is the csv of the map data
@@ -43,7 +47,6 @@ class TileWorld(object):
             # pygame is opposite of Tiled, so needs reversed
             new_layer = list(reversed([row for row in csv.split('\n')]))
             layers.append(new_layer)
-        self.map_height = 32 * 50  # TODO: hardcoded
 
         # These are the collision objects
         self.platforms = []
@@ -68,16 +71,15 @@ class TileWorld(object):
                 self.platforms.append(p)
 
         # Pre-generate the surfaces
-        map_size = (32*50, 32*50)
         self.surfaces = []
         for layer in layers:
-            surf = pygame.Surface(map_size, pygame.SRCALPHA, 32)
+            surf = pygame.Surface(self.map_size, pygame.SRCALPHA, 32)
             self.generate_surface(surf, layer)
             self.surfaces.append(surf)
 
     def pointify(self, csv_string, group_offset=Vec2d.zero()):
         if group_offset.y:
-            offset = self.map_height - group_offset.y
+            offset = self.map_size.y - group_offset.y
         else:
             offset = 0
         point_strings = [p.split(',') for p in csv_string.split()]
@@ -85,11 +87,12 @@ class TileWorld(object):
                  offset-int(p[1])) for p in point_strings]
 
     def update(self, dt, players):
+        # TODO: damage players outside of the map
+
         for p in self.platforms:
             p.update(dt, players)
 
         # Make the camera follow the center of the players
-        camera_speed = 5
         living_players = [p for p in players if p.health > 0]
         count = len(living_players)
         if not count:
@@ -98,6 +101,7 @@ class TileWorld(object):
         destination = position
         current_pos = self.camera
         distance = current_pos.get_distance(destination)
+        camera_speed = distance**.5 / 3
         t = 1 if distance < camera_speed else camera_speed / distance
         new_pos = current_pos.interpolate_to(destination, t)
         self.camera = new_pos
@@ -125,8 +129,7 @@ class TileWorld(object):
             offset = position * (1 - parallax_factor)
 
             # constrain to the bottom and right
-            map_size = Vec2d(32*50, 32*50)
-            size_offset = -position + map_size
+            size_offset = -position + self.map_size
 
             # Get the part of the surface to blit
             p = (-offset.x if offset.x < 0 else temp.x,
