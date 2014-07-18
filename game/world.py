@@ -98,13 +98,9 @@ class TileWorld(object):
         if not count:
             return
         position = sum(p.feet.body.position for p in living_players) / count
-        destination = position
-        current_pos = self.camera
-        distance = current_pos.get_distance(destination)
-        camera_speed = distance**.5 / 3
-        t = 1 if distance < camera_speed else camera_speed / distance
-        new_pos = current_pos.interpolate_to(destination, t)
-        self.camera = new_pos
+        distance = self.camera.get_distance(position)
+        camera_speed = max(distance**.5 / 3, .01)
+        self.camera = self.camera.interpolate_to(position, camera_speed / distance)
 
     def generate_surface(self, surf, data):
         surf.convert_alpha()
