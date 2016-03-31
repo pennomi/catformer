@@ -225,6 +225,10 @@ class Player(object):
 
         if self.health <= 0:
             self.death_sequence.draw(screen, position, flip)
+            if self.death_sequence.done:
+                # respawn
+                self.health = self.max_health
+                self.body.position = Vec2d(100, 100)
         elif self.landed and abs(self.feet.surface_velocity.x) > 1:
             # walking
             self.walk_loop.draw(screen, position, flip)

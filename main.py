@@ -70,13 +70,19 @@ def main():
 
     # Load the world
     world = TileWorld('levels/level.tmx')
-    player1 = Player("Player1", "res/images/cat_gun.png",
+    player1 = Player("Player1", "res/images/cat_gun_lightning.png",
                      up=KEYS.K_UP, left=KEYS.K_LEFT,
                      right=KEYS.K_RIGHT, down=KEYS.K_DOWN, shoot=KEYS.K_SPACE)
-    player2 = Player("Player2", "res/images/cat_gun.png",
+    player2 = Player("Player2", "res/images/cat_gun_farmboy.png",
                      up=KEYS.K_w, left=KEYS.K_a,
                      right=KEYS.K_d, down=KEYS.K_s, shoot=KEYS.K_e)
-    players = [player1, player2]
+    player3 = Player("Player3", "res/images/cat_gun_tiger.png",
+                     up=KEYS.K_i, left=KEYS.K_j,
+                     right=KEYS.K_l, down=KEYS.K_k, shoot=KEYS.K_o)
+    player4 = Player("Player4", "res/images/cat_gun_sword.png",
+                     up=KEYS.K_KP5, left=KEYS.K_KP1,
+                     right=KEYS.K_KP3, down=KEYS.K_KP2, shoot=KEYS.K_KP6)
+    players = [player1, player2, player3, player4]
 
     # track how long each key has been pressed
     pressed_keys = {}

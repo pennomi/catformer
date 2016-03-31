@@ -3,7 +3,7 @@ import pymunk
 from pymunk.vec2d import Vec2d
 
 # Some screen initialization constants
-SCREEN_SIZE = Vec2d(800, 600)
+SCREEN_SIZE = Vec2d(1200, 900)
 SCREEN_HALF = SCREEN_SIZE / 2
 
 # Physics constants
